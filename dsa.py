@@ -1,0 +1,108 @@
+import itertools
+import time
+import math
+
+
+#transformation function which transfers SSP to SPP
+def transform_to_SP(S, T):
+    S_sum = math.fsum(S)
+    x = 2 * T - S_sum
+    S_prime = S + [x]
+    return S_prime, x
+
+
+# Brute-force algorithm to find the solution of SSP
+def brute_force_subset_sum(S, T, epsilon=1e-9):
+    comparisons = []
+    for i in range(1, len(S) + 1):
+        for subset in itertools.combinations(S, i): #goes through all the subsets
+            subset_sum = math.fsum(subset) #finding sum of the subset
+            comparisons.append((subset, subset_sum))
+
+            '''''Directly comparing two floating-point values is dangerous 
+                 due to the imprecision encountered when storing and performing arithmetic on them.'''''
+            if abs(subset_sum - T) < epsilon: #if we find a subset sum equal to target sum, return the solution(subset)
+                return list(subset), comparisons
+    return None, comparisons
+
+
+# Brute-force algorithm to find the solution of SPP
+def brute_force_set_partition(S_prime, epsilon=1e-9):
+    comparisons = []
+    total_sum = math.fsum(S_prime)
+    target = total_sum / 2
+
+    for i in range(1, len(S_prime)):
+        for subset in itertools.combinations(S_prime, i): #goes through all the subsets
+            complement = list(set(S_prime) - set(subset)) #the remaining elements in the set which are not in the subset
+            subset_sum = math.fsum(subset) #finding sum of the subset
+            complement_sum = math.fsum(complement) ##finding sum of the complement set
+            comparisons.append((subset, complement, subset_sum, complement_sum))
+
+            '''''Directly comparing two floating-point values is dangerous 
+                 due to the imprecision encountered when storing and performing arithmetic on them.'''''
+            if abs(subset_sum - target) < epsilon and abs(complement_sum - target) < epsilon:
+                return (list(subset), complement), comparisons
+    return None, comparisons
+
+
+#input from txt file and the flow
+def input_and_process(file):
+    with open(file, "r") as file:
+        lines = file.readlines()
+
+    # Read numbers
+    # First line: set of numbers
+    S = list(map(float, lines[0].strip().split(',')))
+    # Second line: target number
+    T = float(lines[1].strip())
+
+    if len(S) > 16: #to restrict it to not more than 16 numbers
+        print("Error: You can input only 16 numbers.")
+        return
+
+    S_prime, x = transform_to_SP(S, T)
+    print(f"Transformed Set Partition Instance:\n{S_prime}")
+
+    # Timing the set partition solution process
+    start_partition = time.time()
+    partition_result, partition_comparisons = brute_force_set_partition(S_prime)
+    end_partition = time.time()
+
+    # Timing the subset sum solution process
+    start_ssp = time.time()
+    ssp_result, ssp_comparisons = brute_force_subset_sum(S, T)
+    end_ssp = time.time()
+
+    # Output processing
+    if partition_result:
+        set1, set2 = partition_result
+        print("\nSet Partition Found:")
+        print(f"Set 1: {set1} Sum: {math.fsum(set1):.6f}")
+        print(f"Set 2: {set2} Sum: {math.fsum(set2):.6f}")
+        print(f"Subset sum solution set: {ssp_result}")
+    else:
+        # Writing comparisons for Set Partition failure to file
+        with open("no_partition_possible.txt", "w") as f:
+            f.write(f"Set Partition comparisons (Time taken: {end_partition - start_partition:.4f} seconds):\n")
+            for subset, complement, s_sum, c_sum in partition_comparisons:
+                f.write(f"Subset: {subset}, Sum: {s_sum} | Complement: {complement}, Sum: {c_sum}\n")
+            f.write("\nConclusion: No two subsets with equal sum found in S'\n")
+
+        # Writing comparisons for Subset Sum failure to file
+        with open("no_subset_sum_possible.txt", "w") as f:
+            f.write(f"Subset Sum comparisons (Time taken: {end_ssp - start_ssp:.4f} seconds):\n")
+            for subset, s_sum in ssp_comparisons:
+                f.write(f"Subset: {subset}, Sum: {s_sum}\n")
+            f.write("\nConclusion: No subset found that sums to target T\n")
+
+        print(f"\nExecution Summary:")
+        print(f"Set Partition check took: {end_partition - start_partition:.4f} seconds")
+        print(f"Subset Sum check took: {end_ssp - start_ssp:.4f} seconds")
+        print(f"Total execution time: {end_partition - start_partition + end_ssp - start_ssp:.4f} seconds")
+
+
+    #print(f"\nExecution Time: {end_partition - start_partition + end_ssp - start_ssp:.4f} seconds")
+
+
+input_and_process("input.txt")
